@@ -8,7 +8,7 @@ const IP_RATE_LIMIT = {
 
 const WALLET_CLICK_LIMIT = {
   windowMs: 1000, // 1 second
-  maxClicks: 10 // 10 clicks per second
+  maxClicks: 25 // 25 clicks per second
 };
 
 // Clean up old rate limit entries

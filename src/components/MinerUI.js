@@ -3,6 +3,39 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Client-side encryption (obfuscated)
+function encryptMinePayload(data) {
+    const SECRET_KEY = 'k3pcl1ck1ng_s3cr3t_k3y_2024';
+    const NONCE_LENGTH = 8;
+    
+    function xorEncrypt(text, key) {
+        let result = '';
+        for (let i = 0; i < text.length; i++) {
+            result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        return result;
+    }
+    
+    const timestamp = Date.now();
+    const nonce = Array.from({ length: NONCE_LENGTH }, () => 
+        Math.floor(Math.random() * 256)
+    ).map(b => String.fromCharCode(b)).join('');
+    
+    const payload = {
+        d: data,
+        t: timestamp,
+        n: nonce
+    };
+    
+    const jsonStr = JSON.stringify(payload);
+    const encrypted = xorEncrypt(jsonStr, SECRET_KEY);
+    const base64 = btoa(encrypted);
+    const reversed = base64.split('').reverse().join('');
+    const obfuscated = btoa(reversed + '|' + timestamp.toString(36));
+    
+    return obfuscated;
+}
+
 export default function MinerUI() {
     const [walletAddress, setWalletAddress] = useState('');
     const [isWalletSet, setIsWalletSet] = useState(false);
@@ -95,10 +128,16 @@ export default function MinerUI() {
         const pointsToSync = pendingPointsRef.current;
         if (pointsToSync > 0 && walletAddress) {
             try {
+                // Encrypt payload before sending
+                const encryptedPayload = encryptMinePayload({
+                    wallet: walletAddress,
+                    points: pointsToSync
+                });
+
                 await fetch('/api/mine', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wallet: walletAddress, points: pointsToSync })
+                    body: JSON.stringify({ p: encryptedPayload })
                 });
                 setPendingPoints(prev => Math.max(0, prev - pointsToSync));
             } catch {
