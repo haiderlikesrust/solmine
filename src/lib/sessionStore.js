@@ -1,7 +1,7 @@
 import { db } from './db';
 
-// Session duration: 15 minutes
-const SESSION_DURATION_MS = 2 * 60 * 1000;
+// Session duration: 10 minutes
+const SESSION_DURATION_MS = 10 * 60 * 1000;
 
 // Helper to create a new session
 function createNewSession() {

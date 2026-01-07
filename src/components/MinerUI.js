@@ -7,7 +7,7 @@ export default function MinerUI() {
     const [walletAddress, setWalletAddress] = useState('');
     const [isWalletSet, setIsWalletSet] = useState(false);
     const [points, setPoints] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(120);
+    const [timeLeft, setTimeLeft] = useState(600);
     const [miningActive, setMiningActive] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [clicks, setClicks] = useState([]);
@@ -295,7 +295,7 @@ export default function MinerUI() {
     };
 
     const isPoolLow = poolInfo.available < 0.1;
-    const sessionProgress = ((120 - timeLeft) / 120) * 100;
+    const sessionProgress = ((600 - timeLeft) / 600) * 100;
 
     return (
         <div className="app-container">
@@ -311,7 +311,7 @@ export default function MinerUI() {
             {/* Header */}
             <header className="site-header">
                 <div className="logo">
-                    <div className="tech-pointer"></div>
+                    <img src="/cursor.svg" alt="Pointer" className="logo-icon" style={{ width: '48px', height: '48px' }} />
                     <span className="logo-text">KEEPCLICKING</span>
                 </div>
                 <div className="header-stats">
@@ -346,7 +346,7 @@ export default function MinerUI() {
                 {/* Top Row */}
                 <div className="top-row">
                     {/* Left Panel */}
-                    <div className="side-panel glass-card">
+                    <div className="side-panel glass-card left-panel">
                         <div className="panel-header">
                             <div className="panel-icon">📋</div>
                             <h3 className="panel-title">How It Works</h3>
@@ -540,12 +540,118 @@ export default function MinerUI() {
                             </AnimatePresence>
                         </motion.div>
                     </div>
+
+                    {/* Right Panel - Leaderboard */}
+                    <div className="side-panel glass-card right-panel">
+                        <div className="panel-header">
+                            <div className="panel-icon">🏆</div>
+                            <h3 className="panel-title">Leaderboard</h3>
+                        </div>
+
+                        {isWalletSet && (
+                            <div className="user-stats">
+                                <div className="user-stat">
+                                    <div className="user-stat-icon">🎯</div>
+                                    <div className="user-stat-value">{getUserRank()}</div>
+                                    <div className="user-stat-label">Your Rank</div>
+                                </div>
+                                <div className="user-stat">
+                                    <div className="user-stat-icon">💰</div>
+                                    <div className="user-stat-value">{getEstimatedReward()}</div>
+                                    <div className="user-stat-label">Est. SOL</div>
+                                </div>
+                                <div className="user-stat">
+                                    <div className="user-stat-icon">⚡</div>
+                                    <div className="user-stat-value">{points.toLocaleString()}</div>
+                                    <div className="user-stat-label">Points</div>
+                                </div>
+                                <div className="user-stat">
+                                    <div className="user-stat-icon">🖱️</div>
+                                    <div className="user-stat-value">{clickCount}</div>
+                                    <div className="user-stat-label">Clicks</div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="leaderboard-list" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                            {leaderboard.length > 0 ? (
+                                leaderboard.map((miner, idx) => (
+                                    <motion.div
+                                        key={miner.wallet}
+                                        className={`leaderboard-item 
+                                            ${idx === 0 ? 'top-1' : ''} 
+                                            ${idx === 1 ? 'top-2' : ''} 
+                                            ${idx === 2 ? 'top-3' : ''} 
+                                            ${miner.fullWallet === walletAddress ? 'is-you' : ''}`}
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                    >
+                                        <div className="rank-badge">
+                                            {idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                                        </div>
+                                        <span className="leaderboard-wallet">
+                                            {miner.wallet}
+                                            {miner.fullWallet === walletAddress && ' (You)'}
+                                        </span>
+                                        <span className="leaderboard-points">{miner.points.toLocaleString()}</span>
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <div className="leaderboard-empty">
+                                    No clickers yet. Be the first! 🚀
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Right Panel - Payouts (for tablet) */}
+                    <div className="side-panel glass-card payouts-panel">
+                        <div className="panel-header">
+                            <div className="panel-icon">💸</div>
+                            <h3 className="panel-title">Recent Payouts</h3>
+                        </div>
+                        <div className="payouts-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {payouts.length > 0 ? (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-secondary)' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <th style={{ padding: '0.75rem', fontSize: '0.8rem' }}>Time</th>
+                                            <th style={{ padding: '0.75rem', fontSize: '0.8rem' }}>Wallet</th>
+                                            <th style={{ padding: '0.75rem', fontSize: '0.8rem' }}>Amount</th>
+                                            <th style={{ padding: '0.75rem', fontSize: '0.8rem' }}>Tx</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {payouts.map((tx, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>{new Date(tx.timestamp).toLocaleTimeString()}</td>
+                                                <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'monospace', fontSize: '0.7rem' }}>{tx.wallet.slice(0, 8)}...</td>
+                                                <td style={{ padding: '0.5rem 0.75rem', color: 'var(--accent-green)', fontSize: '0.75rem' }}>{tx.sol} SOL</td>
+                                                <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                    <a
+                                                        href={`https://solscan.io/tx/${tx.signature}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{ color: 'var(--accent-primary)', textDecoration: 'none', fontSize: '0.75rem' }}
+                                                    >
+                                                        View ↗
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                    No payouts recorded yet. Be the first to earn!
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div> {/* End top-row */}
 
-
-
-                {/* Payouts Row */}
-                <div className="bottom-row" style={{ marginTop: '2rem' }}>
+                {/* Payouts Row - For mobile/desktop */}
+                <div className="bottom-row payouts-bottom" style={{ marginTop: '1rem' }}>
                     <div className="glass-card" style={{ width: '100%', maxWidth: '1200px' }}>
                         <div className="panel-header">
                             <div className="panel-icon">💸</div>
@@ -591,69 +697,6 @@ export default function MinerUI() {
                     </div>
                 </div>
 
-                {/* Right Panel - Leaderboard */}
-                <div className="side-panel glass-card">
-                    <div className="panel-header">
-                        <div className="panel-icon">🏆</div>
-                        <h3 className="panel-title">Leaderboard</h3>
-                    </div>
-
-                    {isWalletSet && (
-                        <div className="user-stats">
-                            <div className="user-stat">
-                                <div className="user-stat-icon">🎯</div>
-                                <div className="user-stat-value">{getUserRank()}</div>
-                                <div className="user-stat-label">Your Rank</div>
-                            </div>
-                            <div className="user-stat">
-                                <div className="user-stat-icon">💰</div>
-                                <div className="user-stat-value">{getEstimatedReward()}</div>
-                                <div className="user-stat-label">Est. SOL</div>
-                            </div>
-                            <div className="user-stat">
-                                <div className="user-stat-icon">⚡</div>
-                                <div className="user-stat-value">{points.toLocaleString()}</div>
-                                <div className="user-stat-label">Points</div>
-                            </div>
-                            <div className="user-stat">
-                                <div className="user-stat-icon">🖱️</div>
-                                <div className="user-stat-value">{clickCount}</div>
-                                <div className="user-stat-label">Clicks</div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="leaderboard-list">
-                        {leaderboard.length > 0 ? (
-                            leaderboard.map((miner, idx) => (
-                                <motion.div
-                                    key={miner.wallet}
-                                    className={`leaderboard-item 
-                                        ${idx === 0 ? 'top-1' : ''} 
-                                        ${idx === 1 ? 'top-2' : ''} 
-                                        ${idx === 2 ? 'top-3' : ''} 
-                                        ${miner.fullWallet === walletAddress ? 'is-you' : ''}`}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.05 }}
-                                >
-                                    <div className="rank-badge">
-                                        {idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
-                                    </div>
-                                    <span className="leaderboard-wallet">
-                                        {miner.wallet}
-                                        {miner.fullWallet === walletAddress && ' (You)'}
-                                    </span>
-                                    <span className="leaderboard-points">{miner.points.toLocaleString()}</span>
-                                </motion.div>
-                            ))
-                        ) : (
-                            <div className="leaderboard-empty">
-                                No clickers yet. Be the first! 🚀
-                            </div>
-                        )}
-                    </div>
-                </div>
             </main>
         </div>
     );
