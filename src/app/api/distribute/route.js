@@ -157,6 +157,12 @@ async function handler(req) {
         lastDistributionSession = session.id;
         markSessionDistributed(session.id);
 
+        const successfulTx = results.filter(r => r.success);
+        if (successfulTx.length > 0) {
+            const { addDistribution } = require('@/lib/sessionStore');
+            addDistribution(session.id, successfulTx);
+        }
+
         const totalDistributed = results
             .filter(r => r.success)
             .reduce((s, r) => s + parseFloat(r.sol), 0);

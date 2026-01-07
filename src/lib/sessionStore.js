@@ -1,7 +1,7 @@
 import { db } from './db';
 
-// Session duration: 1 minute for testing
-const SESSION_DURATION_MS = 1 * 60 * 1000;
+// Session duration: 15 minutes
+const SESSION_DURATION_MS = 2 * 60 * 1000;
 
 // Helper to create a new session
 function createNewSession() {
@@ -169,4 +169,28 @@ export function getTotalPoints() {
 export function getMinerCount() {
     const session = getSession();
     return session.miners.size;
+}
+
+export function addDistribution(sessionId, transactions) {
+    db.update(data => {
+        if (!data.distributions) {
+            data.distributions = [];
+        }
+
+        // Add new transactions to the history
+        const newDistributions = transactions.map(tx => ({
+            ...tx,
+            sessionId,
+            timestamp: Date.now()
+        }));
+
+        // Keep last 100 payouts
+        data.distributions = [...newDistributions, ...data.distributions].slice(0, 100);
+        return data;
+    });
+}
+
+export function getDistributions() {
+    const data = db.get();
+    return data.distributions || [];
 }

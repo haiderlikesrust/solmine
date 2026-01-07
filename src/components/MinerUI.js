@@ -7,7 +7,7 @@ export default function MinerUI() {
     const [walletAddress, setWalletAddress] = useState('');
     const [isWalletSet, setIsWalletSet] = useState(false);
     const [points, setPoints] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(60);
+    const [timeLeft, setTimeLeft] = useState(120);
     const [miningActive, setMiningActive] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [clicks, setClicks] = useState([]);
@@ -32,6 +32,18 @@ export default function MinerUI() {
         averageEfficiency: 0,
         totalSOLEarned: 0
     });
+    const [currentSessionId, setCurrentSessionId] = useState(null);
+    const [payouts, setPayouts] = useState([]);
+
+    const fetchPayouts = useCallback(async () => {
+        try {
+            const res = await fetch('/api/history');
+            const data = await res.json();
+            setPayouts(data.history || []);
+        } catch {
+            // Internal error
+        }
+    }, []);
 
     const fetchPool = useCallback(async () => {
         try {
@@ -50,6 +62,18 @@ export default function MinerUI() {
         try {
             const res = await fetch('/api/session');
             const data = await res.json();
+
+            // Detect new session and reset points
+            if (currentSessionId && data.sessionId !== currentSessionId) {
+                // New session started - reset local points
+                setPoints(0);
+                setPendingPoints(0);
+                setClickCount(0);
+                setMiningActive(false);
+                setStatusMessage('🔄 New session started! Ready to click.');
+            }
+            setCurrentSessionId(data.sessionId);
+
             setTimeLeft(data.timeRemaining);
             setLeaderboard(data.leaderboard || []);
             setSessionStats({
@@ -59,7 +83,7 @@ export default function MinerUI() {
         } catch {
             // Silent fail - will retry on next interval
         }
-    }, []);
+    }, [currentSessionId]);
 
     // Use ref for pendingPoints to avoid re-creating syncPoints on every click
     const pendingPointsRef = useRef(pendingPoints);
@@ -127,14 +151,16 @@ export default function MinerUI() {
     useEffect(() => {
         fetchSession();
         fetchPool();
+        fetchPayouts();
         initAudio();
         const interval = setInterval(() => {
             fetchSession();
             fetchPool();
+            fetchPayouts();
             if (syncPointsRef.current) syncPointsRef.current();
         }, 3000);
         return () => clearInterval(interval);
-    }, [fetchSession, fetchPool, initAudio]);
+    }, [fetchSession, fetchPool, fetchPayouts, initAudio]);
 
     // Trigger distribution when session ends
     const triggerDistribution = useCallback(async () => {
@@ -145,8 +171,26 @@ export default function MinerUI() {
             if (data.success) {
                 playRewardSound();
                 setStatusMessage(`🎉 Distributed ${data.totalDistributed} SOL to ${data.minerCount} clickers!`);
+            } else if (data.message === 'Distribution in progress') {
+                // Poll until distribution completes
+                const pollDistribution = async () => {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const pollRes = await fetch('/api/distribute', { method: 'POST' });
+                    const pollData = await pollRes.json();
+                    if (pollData.success) {
+                        playRewardSound();
+                        setStatusMessage(`🎉 Distributed ${pollData.totalDistributed} SOL to ${pollData.minerCount} clickers!`);
+                    } else if (pollData.message === 'Distribution in progress') {
+                        pollDistribution(); // Keep polling
+                    } else {
+                        setStatusMessage(`✅ ${pollData.message || 'Distribution complete'}`);
+                    }
+                };
+                pollDistribution();
+            } else if (data.message === 'Already distributed for this session') {
+                setStatusMessage('✅ Rewards already distributed for this session!');
             } else {
-                setStatusMessage(data.message || 'Distribution complete');
+                setStatusMessage(`✅ ${data.message || 'Distribution complete'}`);
             }
         } catch {
             setStatusMessage('Distribution triggered');
@@ -251,7 +295,7 @@ export default function MinerUI() {
     };
 
     const isPoolLow = poolInfo.available < 0.1;
-    const sessionProgress = ((60 - timeLeft) / 60) * 100;
+    const sessionProgress = ((120 - timeLeft) / 120) * 100;
 
     return (
         <div className="app-container">
@@ -267,7 +311,7 @@ export default function MinerUI() {
             {/* Header */}
             <header className="site-header">
                 <div className="logo">
-                    <img src="/logo.jpg" alt="KEEPCLICKING" className="logo-img" />
+                    <div className="tech-pointer"></div>
                     <span className="logo-text">KEEPCLICKING</span>
                 </div>
                 <div className="header-stats">
@@ -498,66 +542,53 @@ export default function MinerUI() {
                     </div>
                 </div> {/* End top-row */}
 
-                {/* Bottom Row - Statistics Dashboard */}
-                <div className="bottom-row">
-                    <div className="stats-dashboard glass-card">
+
+
+                {/* Payouts Row */}
+                <div className="bottom-row" style={{ marginTop: '2rem' }}>
+                    <div className="glass-card" style={{ width: '100%', maxWidth: '1200px' }}>
                         <div className="panel-header">
-                            <div className="panel-icon">📊</div>
-                            <h3 className="panel-title">Mining Statistics</h3>
+                            <div className="panel-icon">💸</div>
+                            <h3 className="panel-title">Recent Payouts (Solscan Verified)</h3>
                         </div>
-
-                        <div className="stats-grid">
-                            <div className="stat-card">
-                                <div className="stat-icon">🎯</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{miningStats.totalSessions}</div>
-                                    <div className="stat-label">Sessions Mined</div>
+                        <div className="payouts-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {payouts.length > 0 ? (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-secondary)' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-subtle)' }}>
+                                            <th style={{ padding: '1rem' }}>Time</th>
+                                            <th style={{ padding: '1rem' }}>Wallet</th>
+                                            <th style={{ padding: '1rem' }}>Amount</th>
+                                            <th style={{ padding: '1rem' }}>Transaction</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {payouts.map((tx, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <td style={{ padding: '0.75rem 1rem' }}>{new Date(tx.timestamp).toLocaleTimeString()}</td>
+                                                <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace' }}>{tx.wallet}</td>
+                                                <td style={{ padding: '0.75rem 1rem', color: 'var(--accent-green)' }}>{tx.sol} SOL</td>
+                                                <td style={{ padding: '0.75rem 1rem' }}>
+                                                    <a
+                                                        href={`https://solscan.io/tx/${tx.signature}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{ color: 'var(--accent-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                                    >
+                                                        View <span style={{ fontSize: '0.8em' }}>↗</span>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                    No payouts recorded yet. Be the first to earn!
                                 </div>
-                            </div>
-
-                            <div className="stat-card">
-                                <div className="stat-icon">⚡</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{miningStats.averageEfficiency.toFixed(1)}</div>
-                                    <div className="stat-label">Avg Points/Session</div>
-                                </div>
-                            </div>
-
-                            <div className="stat-card">
-                                <div className="stat-icon">🏆</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{miningStats.bestSession.toLocaleString()}</div>
-                                    <div className="stat-label">Best Session</div>
-                                </div>
-                            </div>
-
-                            <div className="stat-card">
-                                <div className="stat-icon">💎</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{miningStats.totalSOLEarned.toFixed(4)}</div>
-                                    <div className="stat-label">Total SOL Earned</div>
-                                </div>
-                            </div>
-
-                            <div className="stat-card">
-                                <div className="stat-icon">🖱️</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{miningStats.totalClicks.toLocaleString()}</div>
-                                    <div className="stat-label">Total Clicks</div>
-                                </div>
-                            </div>
-
-                            <div className="stat-card">
-                                <div className="stat-icon">📈</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">
-                                        {miningStats.totalClicks > 0 ? (miningStats.totalPoints / miningStats.totalClicks * 100).toFixed(1) : 0}%
-                                    </div>
-                                    <div className="stat-label">Click Efficiency</div>
-                                </div>
-                            </div>
+                            )}
                         </div>
-                    </div> {/* End bottom-row */}
+                    </div>
                 </div>
 
                 {/* Right Panel - Leaderboard */}
