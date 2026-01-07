@@ -94,19 +94,34 @@ export default function MinerUI() {
         }
     }, []);
 
+    // Timer countdown effect
     useEffect(() => {
-        if (timeLeft > 0) {
-            const timer = setInterval(() => {
-                setTimeLeft(prev => Math.max(0, prev - 1));
-            }, 1000);
-            return () => clearInterval(timer);
-        } else if (miningActive) {
+        const timer = setInterval(() => {
+            setTimeLeft(prev => {
+                const newValue = prev - 1;
+                // If timer hits 0, it should stay 0 until server says otherwise
+                return Math.max(0, newValue);
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Session completion handler
+    useEffect(() => {
+        if (timeLeft <= 0 && miningActive) {
             setMiningActive(false);
             syncPoints();
-            // Trigger reward distribution
             triggerDistribution();
         }
-    }, [timeLeft, miningActive, syncPoints, triggerDistribution]);
+
+        // If timer is stuck at 0 for too long (>5s), force a session refresh
+        if (timeLeft === 0 && !miningActive) {
+            const stuckTimer = setTimeout(() => {
+                fetchSession(); // Force refresh to pick up new session
+            }, 5000);
+            return () => clearTimeout(stuckTimer);
+        }
+    }, [timeLeft, miningActive, syncPoints, triggerDistribution, fetchSession]);
 
     const handleWalletSubmit = async (e) => {
         e.preventDefault();
