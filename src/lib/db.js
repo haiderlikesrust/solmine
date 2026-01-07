@@ -13,7 +13,9 @@ if (!fs.existsSync(DB_PATH)) {
     fs.writeFileSync(DB_PATH, JSON.stringify({
         currentSession: null,
         previousSession: null,
-        miners: {} // sessionId -> { wallet -> { points, joinedAt } }
+        miners: {}, // sessionId -> { wallet -> { points, joinedAt } }
+        ipRateLimits: {}, // ip -> [timestamps]
+        walletClickLimits: {} // wallet -> [timestamps]
     }, null, 2));
 }
 
@@ -23,7 +25,13 @@ function readDB() {
         return JSON.parse(data);
     } catch (err) {
         console.error('DB Read Error:', err);
-        return { currentSession: null, previousSession: null, miners: {} };
+        return {
+            currentSession: null,
+            previousSession: null,
+            miners: {},
+            ipRateLimits: {},
+            walletClickLimits: {}
+        };
     }
 }
 

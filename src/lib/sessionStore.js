@@ -16,6 +16,12 @@ function checkAndRotateSession(data) {
     let { currentSession, miners } = data;
     const now = Date.now();
 
+    // Initialize miners object if missing
+    if (!miners) {
+        data.miners = {};
+        miners = data.miners;
+    }
+
     // Initialize if missing
     if (!currentSession) {
         currentSession = createNewSession();

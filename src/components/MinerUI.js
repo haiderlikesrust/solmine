@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MinerUI() {
@@ -22,6 +22,16 @@ export default function MinerUI() {
     });
     const [pendingPoints, setPendingPoints] = useState(0);
     const [clickCount, setClickCount] = useState(0);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const audioContextRef = useRef(null);
+    const [miningStats, setMiningStats] = useState({
+        totalSessions: 0,
+        totalPoints: 0,
+        totalClicks: 0,
+        bestSession: 0,
+        averageEfficiency: 0,
+        totalSOLEarned: 0
+    });
 
     const fetchPool = useCallback(async () => {
         try {
@@ -66,16 +76,52 @@ export default function MinerUI() {
         }
     }, [pendingPoints, walletAddress]);
 
+    // Sound functions using Web Audio API
+    const initAudio = useCallback(() => {
+        if (!audioContextRef.current && typeof window !== 'undefined') {
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }, []);
+
+    const playSound = useCallback((frequency, duration, type = 'sine') => {
+        if (!soundEnabled || !audioContextRef.current) return;
+
+        const oscillator = audioContextRef.current.createOscillator();
+        const gainNode = audioContextRef.current.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContextRef.current.destination);
+
+        oscillator.frequency.setValueAtTime(frequency, audioContextRef.current.currentTime);
+        oscillator.type = type;
+
+        gainNode.gain.setValueAtTime(0.1, audioContextRef.current.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContextRef.current.currentTime + duration);
+
+        oscillator.start(audioContextRef.current.currentTime);
+        oscillator.stop(audioContextRef.current.currentTime + duration);
+    }, [soundEnabled]);
+
+    const playClickSound = useCallback(() => playSound(800, 0.1, 'square'), [playSound]);
+    const playStartSound = useCallback(() => playSound(600, 0.3), [playSound]);
+    const playEndSound = useCallback(() => playSound(400, 0.5), [playSound]);
+    const playRewardSound = useCallback(() => {
+        playSound(800, 0.2);
+        setTimeout(() => playSound(1000, 0.2), 100);
+        setTimeout(() => playSound(1200, 0.3), 200);
+    }, [playSound]);
+
     useEffect(() => {
         fetchSession();
         fetchPool();
+        initAudio();
         const interval = setInterval(() => {
             fetchSession();
             fetchPool();
             syncPoints();
         }, 3000);
         return () => clearInterval(interval);
-    }, [fetchSession, fetchPool, syncPoints]);
+    }, [fetchSession, fetchPool, syncPoints, initAudio]);
 
     // Trigger distribution when session ends
     const triggerDistribution = useCallback(async () => {
@@ -84,7 +130,8 @@ export default function MinerUI() {
             const res = await fetch('/api/distribute', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                setStatusMessage(`🎉 Distributed ${data.totalDistributed} SOL to ${data.minerCount} miners!`);
+                playRewardSound();
+                setStatusMessage(`🎉 Distributed ${data.totalDistributed} SOL to ${data.minerCount} clickers!`);
             } else {
                 setStatusMessage(data.message || 'Distribution complete');
             }
@@ -92,7 +139,7 @@ export default function MinerUI() {
             console.error('Distribution failed:', err);
             setStatusMessage('Distribution triggered');
         }
-    }, []);
+    }, [playRewardSound]);
 
     // Timer countdown effect
     useEffect(() => {
@@ -110,6 +157,7 @@ export default function MinerUI() {
     useEffect(() => {
         if (timeLeft <= 0 && miningActive) {
             setMiningActive(false);
+            playEndSound();
             syncPoints();
             triggerDistribution();
         }
@@ -121,7 +169,7 @@ export default function MinerUI() {
             }, 5000);
             return () => clearTimeout(stuckTimer);
         }
-    }, [timeLeft, miningActive, syncPoints, triggerDistribution, fetchSession]);
+    }, [timeLeft, miningActive, syncPoints, triggerDistribution, fetchSession, playEndSound]);
 
     const handleWalletSubmit = async (e) => {
         e.preventDefault();
@@ -133,7 +181,7 @@ export default function MinerUI() {
                     body: JSON.stringify({ wallet: walletAddress })
                 });
                 setIsWalletSet(true);
-                setStatusMessage('✅ Wallet registered! Ready to mine.');
+                setStatusMessage('✅ Wallet registered! Ready to click.');
             } catch (err) {
                 setStatusMessage('❌ Failed to join session');
             }
@@ -144,7 +192,8 @@ export default function MinerUI() {
 
     const handleStart = () => {
         setMiningActive(true);
-        setStatusMessage('⛏️ Mining active! Tap the orb!');
+        setStatusMessage('🖱️ Clicking active! Tap the orb!');
+        playStartSound();
     };
 
     const handleMine = (e) => {
@@ -153,6 +202,8 @@ export default function MinerUI() {
         setPoints(prev => prev + 1);
         setPendingPoints(prev => prev + 1);
         setClickCount(prev => prev + 1);
+
+        playClickSound();
 
         const id = Date.now() + Math.random();
         const rect = e.currentTarget.getBoundingClientRect();
@@ -204,12 +255,12 @@ export default function MinerUI() {
             {/* Header */}
             <header className="site-header">
                 <div className="logo">
-                    <img src="/logo.jpg" alt="SOLMINE" className="logo-img" />
-                    <span className="logo-text">SOLMINE</span>
+                    <img src="/logo.jpg" alt="KEEPCLICKING" className="logo-img" />
+                    <span className="logo-text">KEEPCLICKING</span>
                 </div>
                 <div className="header-stats">
                     <div className="header-stat">
-                        <span className="header-stat-label">Active Miners</span>
+                        <span className="header-stat-label">Active Clickers</span>
                         <span className="header-stat-value">{sessionStats.minerCount}</span>
                     </div>
                     <div className="header-stat">
@@ -222,13 +273,24 @@ export default function MinerUI() {
                             {poolInfo.available.toFixed(4)} SOL
                         </span>
                     </div>
+                    <div className="header-stat">
+                        <button
+                            onClick={() => setSoundEnabled(!soundEnabled)}
+                            className="sound-toggle"
+                            title={soundEnabled ? 'Disable Sound' : 'Enable Sound'}
+                        >
+                            {soundEnabled ? '🔊' : '🔇'}
+                        </button>
+                    </div>
                 </div>
             </header>
 
             {/* Main Content */}
             <main className="main-content">
-                {/* Left Panel */}
-                <div className="side-panel glass-card">
+                {/* Top Row */}
+                <div className="top-row">
+                    {/* Left Panel */}
+                    <div className="side-panel glass-card">
                     <div className="panel-header">
                         <div className="panel-icon">📋</div>
                         <h3 className="panel-title">How It Works</h3>
@@ -245,14 +307,14 @@ export default function MinerUI() {
                             <span className="step-number">01</span>
                             <div className="step-content">
                                 <h4>Connect Wallet</h4>
-                                <p>Enter your Solana wallet address to join the mining session</p>
+                                <p>Enter your Solana wallet address to join the clicking session</p>
                             </div>
                         </div>
                         <div className="step-item">
                             <span className="step-number">02</span>
                             <div className="step-content">
-                                <h4>Mine Points</h4>
-                                <p>Tap the mining orb to accumulate points during the session</p>
+                                <h4>Click to Earn Points</h4>
+                                <p>Tap the clicking orb to accumulate points during the session</p>
                             </div>
                         </div>
                         <div className="step-item">
@@ -314,7 +376,7 @@ export default function MinerUI() {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    🔓 Enter Mine
+                                    🔓 Start Clicking
                                 </motion.button>
                             </motion.form>
                         ) : (
@@ -336,16 +398,16 @@ export default function MinerUI() {
                                     >
                                         {points.toLocaleString()}
                                     </motion.div>
-                                    <div className="points-label">Points Mined</div>
+                                    <div className="points-label">Points Earned</div>
                                     <div className="estimated-reward">
                                         <span>Est. Reward:</span>
                                         <span className="reward-value">{getEstimatedReward()} SOL</span>
                                     </div>
                                 </div>
 
-                                <div className="mining-orb-container">
+                                <div className="clicking-orb-container">
                                     <motion.div
-                                        className={`mining-orb ${!miningActive ? 'inactive' : ''}`}
+                                        className={`clicking-orb ${!miningActive ? 'inactive' : ''}`}
                                         whileHover={miningActive ? { scale: 1.05 } : {}}
                                         whileTap={miningActive ? { scale: 0.95, rotate: -5 } : {}}
                                         onClick={handleMine}
@@ -380,7 +442,7 @@ export default function MinerUI() {
                                 </div>
 
                                 {miningActive && (
-                                    <div className="mining-progress">
+                                    <div className="clicking-progress">
                                         <div className="progress-label">
                                             <span>Session Progress</span>
                                             <span>{sessionProgress.toFixed(0)}%</span>
@@ -402,7 +464,7 @@ export default function MinerUI() {
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >
-                                        ⛏️ Start Mining
+                                        🖱️ Start Clicking
                                     </motion.button>
                                 )}
                             </>
@@ -421,6 +483,69 @@ export default function MinerUI() {
                             )}
                         </AnimatePresence>
                     </motion.div>
+                </div>
+                </div> {/* End top-row */}
+
+                {/* Bottom Row - Statistics Dashboard */}
+                <div className="bottom-row">
+                    <div className="stats-dashboard glass-card">
+                    <div className="panel-header">
+                        <div className="panel-icon">📊</div>
+                        <h3 className="panel-title">Mining Statistics</h3>
+                    </div>
+
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-icon">🎯</div>
+                            <div className="stat-info">
+                                <div className="stat-value">{miningStats.totalSessions}</div>
+                                <div className="stat-label">Sessions Mined</div>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">⚡</div>
+                            <div className="stat-info">
+                                <div className="stat-value">{miningStats.averageEfficiency.toFixed(1)}</div>
+                                <div className="stat-label">Avg Points/Session</div>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">🏆</div>
+                            <div className="stat-info">
+                                <div className="stat-value">{miningStats.bestSession.toLocaleString()}</div>
+                                <div className="stat-label">Best Session</div>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">💎</div>
+                            <div className="stat-info">
+                                <div className="stat-value">{miningStats.totalSOLEarned.toFixed(4)}</div>
+                                <div className="stat-label">Total SOL Earned</div>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">🖱️</div>
+                            <div className="stat-info">
+                                <div className="stat-value">{miningStats.totalClicks.toLocaleString()}</div>
+                                <div className="stat-label">Total Clicks</div>
+                            </div>
+                        </div>
+
+                        <div className="stat-card">
+                            <div className="stat-icon">📈</div>
+                            <div className="stat-info">
+                                <div className="stat-value">
+                                    {miningStats.totalClicks > 0 ? (miningStats.totalPoints / miningStats.totalClicks * 100).toFixed(1) : 0}%
+                                </div>
+                                <div className="stat-label">Click Efficiency</div>
+                            </div>
+                        </div>
+                    </div>
+                    </div> {/* End bottom-row */}
                 </div>
 
                 {/* Right Panel - Leaderboard */}
@@ -481,7 +606,7 @@ export default function MinerUI() {
                             ))
                         ) : (
                             <div className="leaderboard-empty">
-                                No miners yet. Be the first! 🚀
+                                No clickers yet. Be the first! 🚀
                             </div>
                         )}
                     </div>

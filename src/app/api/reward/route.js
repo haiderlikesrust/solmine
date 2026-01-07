@@ -1,11 +1,12 @@
 import { Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/security';
 
 // Points to SOL conversion: 1 SOL = 10000 points
 const POINTS_PER_SOL = 10000;
 
-export async function POST(req) {
+async function handler(req) {
     try {
         const { miners } = await req.json(); // Array of { wallet, points }
 
@@ -118,3 +119,5 @@ export async function POST(req) {
         return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
     }
 }
+
+export const POST = withRateLimit(handler);

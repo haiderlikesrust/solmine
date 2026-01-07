@@ -12,27 +12,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "SOLMINE - Tap to Earn Solana Rewards",
-  description: "Mine points by tapping and earn SOL rewards. Join mining sessions, compete on the leaderboard, and get paid in Solana every 15 minutes.",
-  keywords: ["Solana", "mining", "crypto", "tap to earn", "SOL", "rewards", "blockchain", "web3"],
-  authors: [{ name: "SOLMINE" }],
-  creator: "SOLMINE",
-  publisher: "SOLMINE",
+  title: "KEEPCLICKING - Tap to Earn Solana Rewards",
+  description: "Click to earn points by tapping and earn SOL rewards. Join clicking sessions, compete on the leaderboard, and get paid in Solana every 15 minutes.",
+  keywords: ["Solana", "clicking", "crypto", "tap to earn", "SOL", "rewards", "blockchain", "web3"],
+  authors: [{ name: "KEEPCLICKING" }],
+  creator: "KEEPCLICKING",
+  publisher: "KEEPCLICKING",
 
   // Open Graph
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://solmine.app",
-    siteName: "SOLMINE",
-    title: "SOLMINE - Tap to Earn Solana Rewards",
-    description: "Mine points by tapping and earn SOL rewards. Join mining sessions, compete on the leaderboard, and get paid in Solana every 15 minutes.",
+    url: "https://keepclicking.app",
+    siteName: "KEEPCLICKING",
+    title: "KEEPCLICKING - Tap to Earn Solana Rewards",
+    description: "Click to earn points by tapping and earn SOL rewards. Join clicking sessions, compete on the leaderboard, and get paid in Solana every 15 minutes.",
     images: [
       {
         url: "/logo.jpg",
         width: 512,
         height: 512,
-        alt: "SOLMINE Logo",
+        alt: "KEEPCLICKING Logo",
       },
     ],
   },
@@ -40,10 +40,10 @@ export const metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "SOLMINE - Tap to Earn Solana Rewards",
-    description: "Mine points by tapping and earn SOL rewards. Join mining sessions and get paid every 15 minutes.",
+    title: "KEEPCLICKING - Tap to Earn Solana Rewards",
+    description: "Click to earn points by tapping and earn SOL rewards. Join clicking sessions and get paid every 15 minutes.",
     images: ["/logo.jpg"],
-    creator: "@solmine",
+    creator: "@keepclicking",
   },
 
   // Icons

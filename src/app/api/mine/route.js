@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { submitPoints, getSession } from '@/lib/sessionStore';
+import { withRateLimit, withWalletClickLimit } from '@/lib/security';
 
-export async function POST(req) {
+async function handler(req) {
     try {
         const { wallet, points } = await req.json();
 
@@ -27,3 +28,5 @@ export async function POST(req) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export const POST = withRateLimit(withWalletClickLimit(handler));

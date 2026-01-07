@@ -1,28 +1,4 @@
 {
-  "currentSession": {
-    "id": 1767757875447,
-    "startTime": 1767757875447,
-    "endTime": 1767757935447,
-    "isDistributing": false,
-    "distributed": false
-  },
-  "previousSession": {
-    "id": 1767757813676,
-    "startTime": 1767757813676,
-    "endTime": 1767757873676,
-    "isDistributing": false,
-    "distributed": false,
-    "miners": {}
-  },
-  "miners": {
-    "1767757691867": {
-      "HtMGkGpoqWqTXZ4PdQkpsAHqRHpoPvztn39C69rPVrtZ": {
-        "points": 48,
-        "joinedAt": 1767757714824
-      }
-    },
-    "1767757753675": {},
-    "1767757813676": {},
-    "1767757875447": {}
-  }
+  "allowed": true,
+  "remaining": 99
 }

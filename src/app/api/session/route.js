@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession, joinSession, getLeaderboard, getTotalPoints, getMinerCount } from '@/lib/sessionStore';
+import { withRateLimit } from '@/lib/security';
 
-export async function GET() {
+async function getHandler() {
     const session = getSession();
     const leaderboard = getLeaderboard();
     const totalPoints = getTotalPoints();
@@ -20,7 +21,7 @@ export async function GET() {
     });
 }
 
-export async function POST(req) {
+async function postHandler(req) {
     try {
         const { wallet } = await req.json();
 
@@ -41,3 +42,6 @@ export async function POST(req) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export const GET = withRateLimit(getHandler);
+export const POST = withRateLimit(postHandler);

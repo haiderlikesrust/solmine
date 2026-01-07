@@ -1,8 +1,9 @@
 import { Connection, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/security';
 
-export async function GET() {
+async function handler() {
     try {
         const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
         const secretKeyString = process.env.REWARD_WALLET_PRIVATE_KEY;
@@ -39,3 +40,5 @@ export async function GET() {
         });
     }
 }
+
+export const GET = withRateLimit(handler);

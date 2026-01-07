@@ -2,12 +2,13 @@ import { Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConf
 import bs58 from 'bs58';
 import { NextResponse } from 'next/server';
 import { getSessionForDistribution, markSessionDistributed } from '@/lib/sessionStore';
+import { withRateLimit } from '@/lib/security';
 
 // Track if distribution is in progress to prevent double-triggers
 let isDistributing = false;
 let lastDistributionSession = null;
 
-export async function POST(req) {
+async function handler(req) {
     try {
         const session = getSessionForDistribution();
         const timeRemaining = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
@@ -185,3 +186,5 @@ export async function POST(req) {
         }, { status: 500 });
     }
 }
+
+export const POST = withRateLimit(handler);
