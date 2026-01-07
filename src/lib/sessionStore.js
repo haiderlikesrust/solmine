@@ -27,19 +27,21 @@ function checkAndRotateSession(data) {
     }
 
     // Check if expired and rotate
-    if (now >= currentSession.endTime && !currentSession.distributed) {
-        // Move current to previous
+    // ALWAYS rotate if time is up. Distribution handles previousSession.
+    if (now >= currentSession.endTime) {
+        // Move current to previous (preserve data for later distribution)
         data.previousSession = {
             ...currentSession,
-            // Deep copy miners for this session so they are preserved
             miners: { ...miners[currentSession.id] }
         };
 
-        // Create new session
+        // Create new session immediately
         currentSession = createNewSession();
         data.currentSession = currentSession;
         miners[currentSession.id] = {};
-        return true; // modified
+
+        // Save changes immediately
+        return true;
     }
 
     return false;
