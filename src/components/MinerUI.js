@@ -7,7 +7,7 @@ export default function MinerUI() {
     const [walletAddress, setWalletAddress] = useState('');
     const [isWalletSet, setIsWalletSet] = useState(false);
     const [points, setPoints] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(60);
+    const [timeLeft, setTimeLeft] = useState(900);
     const [miningActive, setMiningActive] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [clicks, setClicks] = useState([]);
@@ -188,7 +188,7 @@ export default function MinerUI() {
     };
 
     const isPoolLow = poolInfo.available < 0.1;
-    const sessionProgress = ((60 - timeLeft) / 60) * 100;
+    const sessionProgress = ((900 - timeLeft) / 900) * 100;
 
     return (
         <div className="app-container">
