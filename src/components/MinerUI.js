@@ -7,7 +7,7 @@ export default function MinerUI() {
     const [walletAddress, setWalletAddress] = useState('');
     const [isWalletSet, setIsWalletSet] = useState(false);
     const [points, setPoints] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(900);
+    const [timeLeft, setTimeLeft] = useState(60);
     const [miningActive, setMiningActive] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [clicks, setClicks] = useState([]);
@@ -41,8 +41,8 @@ export default function MinerUI() {
                 available: parseFloat(data.available) || 0,
                 balanceSOL: parseFloat(data.balanceSOL) || 0
             });
-        } catch (err) {
-            console.error('Failed to fetch pool:', err);
+        } catch {
+            // Silent fail - will retry on next interval
         }
     }, []);
 
@@ -56,8 +56,8 @@ export default function MinerUI() {
                 totalPoints: data.totalPoints,
                 minerCount: data.minerCount
             });
-        } catch (err) {
-            console.error('Failed to fetch session:', err);
+        } catch {
+            // Silent fail - will retry on next interval
         }
     }, []);
 
@@ -77,8 +77,8 @@ export default function MinerUI() {
                     body: JSON.stringify({ wallet: walletAddress, points: pointsToSync })
                 });
                 setPendingPoints(prev => Math.max(0, prev - pointsToSync));
-            } catch (err) {
-                console.error('Failed to sync points:', err);
+            } catch {
+                // Silent fail - will retry on next sync
             }
         }
     }, [walletAddress]);
@@ -148,8 +148,7 @@ export default function MinerUI() {
             } else {
                 setStatusMessage(data.message || 'Distribution complete');
             }
-        } catch (err) {
-            console.error('Distribution failed:', err);
+        } catch {
             setStatusMessage('Distribution triggered');
         }
     }, [playRewardSound]);
@@ -252,7 +251,7 @@ export default function MinerUI() {
     };
 
     const isPoolLow = poolInfo.available < 0.1;
-    const sessionProgress = ((900 - timeLeft) / 900) * 100;
+    const sessionProgress = ((60 - timeLeft) / 60) * 100;
 
     return (
         <div className="app-container">

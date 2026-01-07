@@ -11,20 +11,14 @@ let lastDistributionSession = null;
 async function handler(req) {
     try {
         const session = getSessionForDistribution();
-        const timeRemaining = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
-
-        // Log for debugging
-        console.log(`Distribution triggered. Session: ${session.id}, Miners: ${session.miners.size}`);
 
         // Prevent double distribution for same session
-        /* DISABLED FOR TESTING
         if (lastDistributionSession === session.id) {
             return NextResponse.json({
                 message: 'Already distributed for this session',
                 sessionId: session.id
             }, { status: 200 });
         }
-        */
 
         // Prevent concurrent distribution
         if (isDistributing) {
@@ -55,7 +49,6 @@ async function handler(req) {
 
         if (!rpcUrl || !secretKeyString) {
             isDistributing = false;
-            console.error("Missing server configuration");
             return NextResponse.json({ message: 'Server not configured' }, { status: 500 });
         }
 
@@ -65,9 +58,8 @@ async function handler(req) {
         try {
             const secretKey = bs58.decode(secretKeyString);
             payer = Keypair.fromSecretKey(secretKey);
-        } catch (e) {
+        } catch {
             isDistributing = false;
-            console.error("Invalid private key format", e);
             return NextResponse.json({ message: 'Server key error' }, { status: 500 });
         }
 
@@ -145,17 +137,17 @@ async function handler(req) {
                 results.push({
                     wallet: reward.wallet.slice(0, 8) + '...',
                     sol: reward.sol.toFixed(6),
-                    signature: signature.slice(0, 16) + '...',
+                    signature: signature,
+                    fullWallet: reward.wallet,
                     success: true
                 });
 
-                console.log(`Sent ${reward.sol} SOL to ${reward.wallet.slice(0, 8)}...`);
             } catch (txError) {
-                console.error(`Failed to send to ${reward.wallet}:`, txError.message);
                 results.push({
                     wallet: reward.wallet.slice(0, 8) + '...',
                     sol: reward.sol.toFixed(6),
                     error: txError.message,
+                    fullWallet: reward.wallet,
                     success: false
                 });
             }
@@ -163,7 +155,7 @@ async function handler(req) {
 
         isDistributing = false;
         lastDistributionSession = session.id;
-        markSessionDistributed(session.id); // Mark as complete in store
+        markSessionDistributed(session.id);
 
         const totalDistributed = results
             .filter(r => r.success)
@@ -179,10 +171,9 @@ async function handler(req) {
 
     } catch (error) {
         isDistributing = false;
-        console.error('Distribution Error:', error);
         return NextResponse.json({
             message: 'Distribution failed',
-            error: error.message
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error'
         }, { status: 500 });
     }
 }

@@ -23,8 +23,7 @@ function readDB() {
     try {
         const data = fs.readFileSync(DB_PATH, 'utf8');
         return JSON.parse(data);
-    } catch (err) {
-        console.error('DB Read Error:', err);
+    } catch {
         return {
             currentSession: null,
             previousSession: null,
@@ -38,8 +37,8 @@ function readDB() {
 function writeDB(data) {
     try {
         fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-    } catch (err) {
-        console.error('DB Write Error:', err);
+    } catch {
+        // Silent fail - file operations may fail in some environments
     }
 }
 

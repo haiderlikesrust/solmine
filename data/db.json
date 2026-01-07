@@ -1,7 +1,22 @@
 {
-  "currentSession": null,
+  "currentSession": {
+    "id": 1767815892579,
+    "startTime": 1767815892579,
+    "endTime": 1767816792579,
+    "isDistributing": false,
+    "distributed": false
+  },
   "previousSession": null,
-  "miners": {},
-  "ipRateLimits": {},
+  "miners": {
+    "1767815892579": {}
+  },
+  "ipRateLimits": {
+    "::1": [
+      1767815892578,
+      1767815892585,
+      1767815892594,
+      1767815892606
+    ]
+  },
   "walletClickLimits": {}
 }

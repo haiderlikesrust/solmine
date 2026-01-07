@@ -652,13 +652,9 @@ body {
   font-family: 'Orbitron', sans-serif;
   font-size: 4rem;
   font-weight: 900;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-bright));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #00d4ff;
   line-height: 1;
-  text-shadow: none;
-  filter: drop-shadow(0 0 30px rgba(0, 212, 255, 0.5));
+  text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
 }
 
 .timer-value.warning {

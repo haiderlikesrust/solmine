@@ -1,11 +1,14 @@
 import { db } from './db';
 
+// Session duration: 1 minute for testing
+const SESSION_DURATION_MS = 1 * 60 * 1000;
+
 // Helper to create a new session
 function createNewSession() {
     return {
         id: Date.now(),
         startTime: Date.now(),
-        endTime: Date.now() + (1 * 60 * 1000), // 1 minute
+        endTime: Date.now() + SESSION_DURATION_MS,
         isDistributing: false,
         distributed: false
     };

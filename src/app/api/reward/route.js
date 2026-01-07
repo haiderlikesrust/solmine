@@ -19,7 +19,6 @@ async function handler(req) {
         const secretKeyString = process.env.REWARD_WALLET_PRIVATE_KEY;
 
         if (!rpcUrl || !secretKeyString) {
-            console.error("Missing server configuration");
             return NextResponse.json({ message: 'Server misconfiguration' }, { status: 500 });
         }
 
@@ -29,8 +28,7 @@ async function handler(req) {
         try {
             const secretKey = bs58.decode(secretKeyString);
             payer = Keypair.fromSecretKey(secretKey);
-        } catch (e) {
-            console.error("Invalid private key format", e);
+        } catch {
             return NextResponse.json({ message: 'Server key error' }, { status: 500 });
         }
 
@@ -98,7 +96,6 @@ async function handler(req) {
                     success: true
                 });
             } catch (txError) {
-                console.error(`Failed to send to ${reward.wallet}:`, txError);
                 results.push({
                     wallet: reward.wallet,
                     sol: reward.sol,
@@ -115,8 +112,10 @@ async function handler(req) {
         });
 
     } catch (error) {
-        console.error('Distribution Error:', error);
-        return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
+        return NextResponse.json({
+            message: 'Internal Server Error',
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error'
+        }, { status: 500 });
     }
 }
 
