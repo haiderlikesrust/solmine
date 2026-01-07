@@ -67,45 +67,51 @@ async function handler(req) {
         const balance = await connection.getBalance(payer.publicKey);
         const balanceSOL = balance / LAMPORTS_PER_SOL;
 
-        // Reserve 0.01 SOL for transaction fees
-        const availableSOL = Math.max(0, balanceSOL - 0.01);
+        // Reserve SOL for transaction fees and safety buffer
+        // Each transaction costs ~0.000005 SOL, reserve extra for network congestion
+        // Reserve: 0.05 SOL base + 0.00001 SOL per miner (for transaction fees)
+        const reserveBase = 0.05; // Base reserve for fees and safety
+        const reservePerMiner = 0.00001; // Additional reserve per miner transaction
+        const totalReserve = reserveBase + (miners.length * reservePerMiner);
+        
+        const availableSOL = Math.max(0, balanceSOL - totalReserve);
         const availableLamports = Math.floor(availableSOL * LAMPORTS_PER_SOL);
 
         if (availableLamports <= 0) {
             isDistributing = false;
             lastDistributionSession = session.id;
-            return NextResponse.json({ message: 'Insufficient reward pool' }, { status: 200 });
+            return NextResponse.json({ 
+                message: 'Insufficient reward pool - need at least ' + totalReserve.toFixed(4) + ' SOL reserved',
+                requiredReserve: totalReserve.toFixed(4),
+                currentBalance: balanceSOL.toFixed(4)
+            }, { status: 200 });
         }
 
         // Calculate total points
         const totalPoints = miners.reduce((sum, m) => sum + m.points, 0);
 
-        // Calculate rewards based on FIXED RATE: 100,000 Points = 1 SOL
+        if (totalPoints === 0) {
+            isDistributing = false;
+            lastDistributionSession = session.id;
+            return NextResponse.json({ message: 'No points to distribute' }, { status: 200 });
+        }
+
+        // Calculate rewards proportionally: (individual_points / total_points) * reward_wallet_balance
         const rewards = miners.map(miner => {
-            // 1 Point = 0.00001 SOL
-            const rewardSOL = miner.points / 100000;
-            const rewardLamports = Math.floor(rewardSOL * LAMPORTS_PER_SOL);
+            // Calculate share: individual_points / total_points
+            const share = miner.points / totalPoints;
+            // Calculate reward: share * available_balance
+            const rewardLamports = Math.floor(share * availableLamports);
+            const rewardSOL = rewardLamports / LAMPORTS_PER_SOL;
 
             return {
                 wallet: miner.wallet,
                 points: miner.points,
-                share: 'Fixed Rate',
+                share: (share * 100).toFixed(2) + '%',
                 lamports: rewardLamports,
                 sol: rewardSOL
             };
         }).filter(r => r.lamports >= 5000); // Min 0.000005 SOL to avoid dust
-
-        // Check if total needed exceeds available balance
-        const totalNeededLamports = rewards.reduce((sum, r) => sum + r.lamports, 0);
-
-        if (totalNeededLamports > availableLamports) {
-            // If we don't have enough, revert to proportional distribution of what we have
-            const scalingFactor = availableLamports / totalNeededLamports;
-            rewards.forEach(r => {
-                r.lamports = Math.floor(r.lamports * scalingFactor);
-                r.sol = r.lamports / LAMPORTS_PER_SOL;
-            });
-        }
 
         if (rewards.length === 0) {
             isDistributing = false;
@@ -113,10 +119,45 @@ async function handler(req) {
             return NextResponse.json({ message: 'Rewards too small' }, { status: 200 });
         }
 
+        // Safety check: Ensure total rewards don't exceed available balance
+        const totalRewardLamports = rewards.reduce((sum, r) => sum + r.lamports, 0);
+        if (totalRewardLamports > availableLamports) {
+            // Scale down rewards proportionally if they exceed available balance
+            const scaleFactor = availableLamports / totalRewardLamports;
+            rewards.forEach(r => {
+                r.lamports = Math.floor(r.lamports * scaleFactor);
+                r.sol = r.lamports / LAMPORTS_PER_SOL;
+            });
+        }
+
+        // Final verification: Ensure we're not trying to send more than available
+        const finalTotalLamports = rewards.reduce((sum, r) => sum + r.lamports, 0);
+        if (finalTotalLamports > availableLamports) {
+            isDistributing = false;
+            lastDistributionSession = session.id;
+            return NextResponse.json({ 
+                message: 'Reward calculation error - exceeds available balance',
+                available: availableLamports,
+                requested: finalTotalLamports
+            }, { status: 500 });
+        }
+
         // Send transactions
         const results = [];
+        let totalSentLamports = 0;
 
         for (const reward of rewards) {
+            // Safety check: Don't send if it would exceed available balance
+            if (totalSentLamports + reward.lamports > availableLamports) {
+                results.push({
+                    wallet: reward.wallet.slice(0, 8) + '...',
+                    sol: reward.sol.toFixed(6),
+                    error: 'Would exceed available balance',
+                    fullWallet: reward.wallet,
+                    success: false
+                });
+                continue;
+            }
             try {
                 const toPublicKey = new PublicKey(reward.wallet);
 
@@ -134,6 +175,8 @@ async function handler(req) {
                     [payer]
                 );
 
+                totalSentLamports += reward.lamports;
+                
                 results.push({
                     wallet: reward.wallet.slice(0, 8) + '...',
                     sol: reward.sol.toFixed(6),

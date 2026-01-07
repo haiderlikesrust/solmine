@@ -284,14 +284,14 @@ export default function MinerUI() {
     };
 
     const getEstimatedReward = () => {
-        if (points === 0) return '0.000000';
+        if (points === 0 || sessionStats.totalPoints === 0) return '0.000000';
+        if (poolInfo.available <= 0) return '0.000000';
 
-        // Fixed Rate: 100,000 Points = 1 SOL
-        const estimatedSOL = points / 100000;
+        // Proportional: (individual_points / total_points) * reward_wallet_balance
+        const share = points / sessionStats.totalPoints;
+        const estimatedSOL = share * poolInfo.available;
 
-        // Cap at available pool balance
-        const cappedReward = Math.min(estimatedSOL, poolInfo.available);
-        return cappedReward.toFixed(6);
+        return estimatedSOL.toFixed(6);
     };
 
     const isPoolLow = poolInfo.available < 0.1;
