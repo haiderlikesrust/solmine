@@ -3,7 +3,7 @@ import { db } from './db';
 // Rate limiting constants
 const IP_RATE_LIMIT = {
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 100 // 100 requests per minute
+  maxRequests: 1000 // 1000 requests per minute
 };
 
 const WALLET_CLICK_LIMIT = {
@@ -47,7 +47,7 @@ function cleanupOldEntries(data) {
 // Check IP rate limit
 export function checkIpRateLimit(ip) {
   let result = { allowed: false, remaining: 0 };
-  
+
   db.update(data => {
     // Ensure we have all required fields
     if (!data.currentSession) data.currentSession = null;
@@ -72,14 +72,14 @@ export function checkIpRateLimit(ip) {
 
     return data; // Return the modified data object, not the result
   });
-  
+
   return result;
 }
 
 // Check wallet click rate limit
 export function checkWalletClickLimit(wallet) {
   let result = { allowed: false, remaining: 0 };
-  
+
   db.update(data => {
     // Ensure we have all required fields
     if (!data.currentSession) data.currentSession = null;
@@ -104,7 +104,7 @@ export function checkWalletClickLimit(wallet) {
 
     return data; // Return the modified data object, not the result
   });
-  
+
   return result;
 }
 
