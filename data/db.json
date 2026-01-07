@@ -1,4 +1,7 @@
 {
-  "allowed": true,
-  "remaining": 99
+  "currentSession": null,
+  "previousSession": null,
+  "miners": {},
+  "ipRateLimits": {},
+  "walletClickLimits": {}
 }

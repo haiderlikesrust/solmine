@@ -46,7 +46,9 @@ function cleanupOldEntries(data) {
 
 // Check IP rate limit
 export function checkIpRateLimit(ip) {
-  return db.update(data => {
+  let result = { allowed: false, remaining: 0 };
+  
+  db.update(data => {
     // Ensure we have all required fields
     if (!data.currentSession) data.currentSession = null;
     if (!data.previousSession) data.previousSession = null;
@@ -63,16 +65,22 @@ export function checkIpRateLimit(ip) {
     // Check if under limit
     if (data.ipRateLimits[ip].length < IP_RATE_LIMIT.maxRequests) {
       data.ipRateLimits[ip].push(Date.now());
-      return { allowed: true, remaining: IP_RATE_LIMIT.maxRequests - data.ipRateLimits[ip].length };
+      result = { allowed: true, remaining: IP_RATE_LIMIT.maxRequests - data.ipRateLimits[ip].length };
+    } else {
+      result = { allowed: false, remaining: 0 };
     }
 
-    return { allowed: false, remaining: 0 };
+    return data; // Return the modified data object, not the result
   });
+  
+  return result;
 }
 
 // Check wallet click rate limit
 export function checkWalletClickLimit(wallet) {
-  return db.update(data => {
+  let result = { allowed: false, remaining: 0 };
+  
+  db.update(data => {
     // Ensure we have all required fields
     if (!data.currentSession) data.currentSession = null;
     if (!data.previousSession) data.previousSession = null;
@@ -89,11 +97,15 @@ export function checkWalletClickLimit(wallet) {
     // Check if under limit
     if (data.walletClickLimits[wallet].length < WALLET_CLICK_LIMIT.maxClicks) {
       data.walletClickLimits[wallet].push(Date.now());
-      return { allowed: true, remaining: WALLET_CLICK_LIMIT.maxClicks - data.walletClickLimits[wallet].length };
+      result = { allowed: true, remaining: WALLET_CLICK_LIMIT.maxClicks - data.walletClickLimits[wallet].length };
+    } else {
+      result = { allowed: false, remaining: 0 };
     }
 
-    return { allowed: false, remaining: 0 };
+    return data; // Return the modified data object, not the result
   });
+  
+  return result;
 }
 
 // Get client IP from request

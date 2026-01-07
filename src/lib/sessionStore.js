@@ -5,7 +5,7 @@ function createNewSession() {
     return {
         id: Date.now(),
         startTime: Date.now(),
-        endTime: Date.now() + (15 * 60 * 1000), // 15 minutes
+        endTime: Date.now() + (1 * 60 * 1000), // 1 minute
         isDistributing: false,
         distributed: false
     };
